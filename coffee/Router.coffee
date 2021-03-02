@@ -2,10 +2,7 @@ express = require "express"
 bodyParser = require 'body-parser'
 cookieParser = require "cookie-parser"
 session = require "express-session"
-multer = require "multer"
 marked = require "marked"
-ObjectId = require('mongodb').ObjectId
-ExecHandler = require "./ExecHandler"
 GeneralRouter = require "./GeneralRouter"
 LOG = __logger.getLogger "Router"
 
@@ -40,27 +37,36 @@ class Router
 	router: ->
 		app.use bodyParser.json()
 		app.use bodyParser.urlencoded {extended: true}
-		# 文件上传
-		storage = multer.diskStorage({
-			destination: (req, file, cb)->
-				cb null, path.join(__workspace, 'uploads/')
-			filename: (req, file, cb)->
-				fieldname = __utils.uuid()
-				cb null, fieldname + file.originalname.substring(file.originalname.indexOf('.'))
-		});
-		upload = multer { storage: storage } 
-		new GeneralRouter("catalog").router()
-		new GeneralRouter("blog").router()
-		new GeneralRouter("tag").router()
-		new GeneralRouter("essay").router()
-		new GeneralRouter("comment").router()
-		new GeneralRouter("image").router (router, context)->
-			router.post __utils.getRouterPath("/store"), upload.single('image'), (req, res)->
-				file = req.file
-				file.uploadTime = moment().format "YYYY-MM-DD HH:mm:ss"
-				context.insert file, (err)->
-					if err
-						LOG.error err
-					__utils.generalResult res, err, Number(!err), file.filename
+
+		@loadBusinessRoute()
+
+		app.use logErrors
+		app.use clientErrorHandler
+		app.use errorHandler
+
+	loadBusinessRoute: ->
+		files = fs.readdirSync path.resolve(__workspace, 'model')
+		files.forEach (file)=>
+			if /\.schema\.js$/.test file
+				name = file.replace /\.schema\.js$/, ""
+				try
+					middlewareNM = "./" + __utils.upperFirstStr name + "Router"
+					router = require middlewareNM
+				catch e
+					LOG.warn "Cannot find #{name} router 中间件"
+				new GeneralRouter(name).router(router)
+		
+	logErrors = (err, req, res, next)->
+		console.error err.stack
+		next(err)
+
+	clientErrorHandler = (err, req, res, next)->
+		if req.xhr
+			res.status(500).send({ error: 'Something failed!' })
+		else
+			next(err)
+
+	errorHandler = (err, req, res, next)->
+		res.status(500).send({ error: 'Something failed!' })
 
 module.exports = Router

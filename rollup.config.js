@@ -1,22 +1,29 @@
 import json from 'rollup-plugin-json';
 import resolve from 'rollup-plugin-node-resolve';
 import commonjs from 'rollup-plugin-commonjs';
+import node_globals from 'rollup-plugin-node-globals';
+import coffeescript from 'rollup-plugin-coffee-script';
 import { terser } from 'rollup-plugin-terser';
 import pkg from './package.json'
 
 export default {
-  input: './src/main.js',
+  input: './coffee/main.coffee',
   output: [
     { file: pkg.main, format: 'cjs' }
   ],
   plugins: [
     json(),
-    commonjs(),
+    // node_globals(),
+    coffeescript(),
     resolve({
+      extensions: ['.js', '.coffee'],
       // 将自定义选项传递给解析插件
       customResolveOptions: {
         moduleDirectory: 'node_modules'
       }
+    }),
+    commonjs({
+      extensions: ['.js', '.coffee']
     }),
     // terser()
   ],

@@ -5,7 +5,6 @@ global.async = require "async"
 global._ = require "lodash"
 global.sprintf = require "sprintf-js"
 global.mkdirp = require "mkdirp"
-global.MongoDao = require "handler4mongodb"
 { printToBigChar } = require "print-big-char"
 
 # global variable
@@ -16,6 +15,7 @@ global.__utils = require "./Utils"
 global.__router_prefix = server.router_prefix
 
 # load local module
+InitDB = require './InitDB'
 
 # start server
 express = require "express"
@@ -25,8 +25,11 @@ logger.useLogger app, logger.getLogger('HTTP') #请求日志
 
 printToBigChar "presonal-blog"
 
+LOG.info '当前环境' + process.env.NODE_ENV
+
 start = global.moment()
 httpServer.listen server.port, server.hostName, ->
+	InitDB()
 	Router = require("./Router")
 	new Router().router()
 	LOG.info "the server start up ----#{global.moment() - start}ms"
